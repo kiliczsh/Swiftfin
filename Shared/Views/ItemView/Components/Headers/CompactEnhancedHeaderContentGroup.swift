@@ -41,7 +41,6 @@ extension ItemView {
 
             // MARK: - Title
 
-            @ViewBuilder
             private var fallbackTitle: some View {
                 Text(provider.item.displayTitle.localizedUppercase)
                     .font(.system(size: 44, weight: .black))
@@ -54,7 +53,6 @@ extension ItemView {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            @ViewBuilder
             private var logo: some View {
                 ImageView(
                     provider.item.imageSource(
@@ -80,7 +78,6 @@ extension ItemView {
 
             // MARK: - Hero content
 
-            @ViewBuilder
             private var heroContent: some View {
                 VStack(alignment: .center, spacing: 10) {
                     logo
@@ -104,7 +101,6 @@ extension ItemView {
 
             // MARK: - Background
 
-            @ViewBuilder
             private var heroBackground: some View {
                 VStack(spacing: 0) {
                     Color.black

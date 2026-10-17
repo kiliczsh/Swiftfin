@@ -57,7 +57,7 @@ struct PlayButton: View {
             return
         }
 
-        let queue: (any MediaPlayerQueue)? = mediaPlayerItemProvider.item.type == .episode ?
+        let queue: any MediaPlayerQueue? = mediaPlayerItemProvider.item.type == .episode ?
             EpisodeMediaPlayerQueue(episode: mediaPlayerItemProvider.item) : nil
 
         router.route(
@@ -104,7 +104,6 @@ struct PlayButton: View {
         return L10n.posterAccessibilityRemaining(progressLabel)
     }
 
-    @ViewBuilder
     private var prominentLabel: some View {
         HStack(spacing: 8) {
             Image(systemName: "play.fill")
@@ -151,7 +150,6 @@ struct PlayButton: View {
         }
     }
 
-    @ViewBuilder
     private var prominentBody: some View {
         Button {
             play()
@@ -173,7 +171,6 @@ struct PlayButton: View {
 
     // MARK: - Standard
 
-    @ViewBuilder
     private var standardBody: some View {
         Button {
             play()

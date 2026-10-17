@@ -33,6 +33,7 @@ final class SearchBrowseViewModel: ObservableObject {
 
     func loadIfNeeded() {
         guard !hasLoaded else { return }
+
         hasLoaded = true
 
         Task { [weak self] in
@@ -69,6 +70,7 @@ final class SearchBrowseViewModel: ObservableObject {
         }
 
         guard !Task.isCancelled else { return }
+
         self.genres = genres
 
         // Give each genre the artwork of a random item from it.
@@ -119,7 +121,6 @@ final class SearchBrowseViewModel: ObservableObject {
 
         self.genres = genres
     }
-
 }
 
 // MARK: - SearchBrowseView

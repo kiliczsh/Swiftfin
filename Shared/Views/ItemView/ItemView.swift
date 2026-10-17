@@ -101,7 +101,6 @@ struct ItemView: View {
         return resolved
     }
 
-    @ViewBuilder
     private func contentGroupScrollView(
         isEnhanced: Bool = false
     ) -> some View {
@@ -112,21 +111,19 @@ struct ItemView: View {
         )
     }
 
-    @ViewBuilder
     private var blurredNavigationBarScrollView: some View {
         BlurredNavigationBarScrollView(groups: contentGroups)
     }
 
-    @ViewBuilder
     private var content: some View {
         Group {
             switch (isEnhanced, isCompact) {
             case (true, true):
                 blurredNavigationBarScrollView
-                #if os(iOS)
-                    .background(Color.black.ignoresSafeArea())
-                    .colorScheme(.dark)
-                #endif
+                    #if os(iOS)
+                        .background(Color.black.ignoresSafeArea())
+                        .colorScheme(.dark)
+                    #endif
 
             case (true, false):
                 InlinePlatformView {

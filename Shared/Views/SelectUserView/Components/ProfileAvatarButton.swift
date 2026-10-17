@@ -99,7 +99,6 @@ extension SelectUserView {
             .accessibilityAddTraits(isEditing && isSelected ? .isSelected : [])
         }
 
-        @ViewBuilder
         private var avatar: some View {
             RedrawOnNotificationView(
                 .didChangeUserProfile,

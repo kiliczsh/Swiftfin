@@ -40,10 +40,12 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
         return store.changes
             .compactMap { change -> ItemStore.Update? in
                 guard case let .updated(update) = change else { return nil }
+
                 return update
             }
             .flatMap { [weak self, weak store] update -> AnyPublisher<Void, Never> in
                 guard let self else { return Combine.Empty().eraseToAnyPublisher() }
+
                 return self.refreshRequest(for: update, in: store)
             }
             .eraseToAnyPublisher()
@@ -94,7 +96,7 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
         unloadedChildren[update.itemID] = UnloadedChild(isChild: nil, state: state)
 
         return resolveIsChild(itemID: update.itemID)
-            .filter { $0 }
+            .filter(\.self)
             .map { _ in () }
             .eraseToAnyPublisher()
     }

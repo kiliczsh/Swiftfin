@@ -60,7 +60,6 @@ struct MediaLibraryView: View {
 
     // MARK: - Libraries
 
-    @ViewBuilder
     private var librariesSection: some View {
         LazyVStack(alignment: .leading, spacing: 0) {
             ForEach(userViewsViewModel.elements) { element in
@@ -71,7 +70,6 @@ struct MediaLibraryView: View {
 
     // MARK: - Recently Added
 
-    @ViewBuilder
     private var recentlyAddedSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(L10n.recentlyAdded.localizedCapitalized)

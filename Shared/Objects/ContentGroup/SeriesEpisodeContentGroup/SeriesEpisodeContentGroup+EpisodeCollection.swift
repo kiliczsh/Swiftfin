@@ -286,7 +286,6 @@ extension SeriesEpisodeContentGroup {
         let element: EpisodeElement
         let refresh: () -> Void
 
-        @ViewBuilder
         var body: some View {
             switch element {
             case .empty:

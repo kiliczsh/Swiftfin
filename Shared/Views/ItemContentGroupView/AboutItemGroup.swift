@@ -132,7 +132,6 @@ struct AboutItemGroup: ContentGroup {
             .aspectRatio(cardAspectRatio, contentMode: .fit)
         }
 
-        @ViewBuilder
         private func ratingsCard(criticRating: Float, communityRating: Float) -> some View {
             AboutCard(
                 title: L10n.ratings,
@@ -193,7 +192,6 @@ struct AboutItemGroup: ContentGroup {
             #endif
         }
 
-        @ViewBuilder
         private var cardsBody: some View {
             ContentGroupSection {
                 ScrollView(.horizontal) {
@@ -315,6 +313,7 @@ extension AboutItemGroup {
 
             func add(_ id: String, _ title: String, _ value: String?, action: (() -> Void)? = nil) {
                 guard let value, value.isNotEmpty else { return }
+
                 entries.append(Entry(id: id, title: title, value: value, action: action))
             }
 

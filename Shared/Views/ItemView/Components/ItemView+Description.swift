@@ -52,7 +52,6 @@ extension ItemView {
             return text
         }
 
-        @ViewBuilder
         private var inlineBody: some View {
             Button {
                 router.route(to: .itemOverview(item: item))

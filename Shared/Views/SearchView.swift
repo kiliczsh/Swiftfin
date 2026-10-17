@@ -38,7 +38,6 @@ struct SearchView: View {
     @TabItemSelected
     private var tabItemSelected
 
-    @ViewBuilder
     private var suggestionsView: some View {
         VStack(spacing: 20) {
             ForEach(viewModel.suggestions) { item in
@@ -112,9 +111,9 @@ struct SearchView: View {
         .ignoresSafeArea(.keyboard)
         .navigationTitle(L10n.search)
         #if os(iOS)
-            .toolbarTitleDisplayMode(.large)
+        .toolbarTitleDisplayMode(.large)
         #else
-            .toolbarTitleDisplayMode(.inline)
+        .toolbarTitleDisplayMode(.inline)
         #endif
         .searchFocused($isSearchFocused)
         .onReceive(tabItemSelected) { event in

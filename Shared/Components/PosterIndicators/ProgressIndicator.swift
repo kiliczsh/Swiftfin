@@ -49,7 +49,6 @@ struct ProgressIndicator: View {
         #endif
     }
 
-    @ViewBuilder
     private var progressBar: some View {
         ProgressView(value: normalizedProgress)
             .progressViewStyle(.playback)
@@ -60,7 +59,6 @@ struct ProgressIndicator: View {
             .accessibilityHidden(true)
     }
 
-    @ViewBuilder
     private var compactProgressBar: some View {
         Rectangle()
             .fill(accentColor)
@@ -70,7 +68,6 @@ struct ProgressIndicator: View {
             .accessibilityHidden(true)
     }
 
-    @ViewBuilder
     private var runtime: some View {
         Text(title)
             .font(.system(.footnote, design: .rounded, weight: .semibold))
@@ -85,14 +82,12 @@ struct ProgressIndicator: View {
             }
     }
 
-    @ViewBuilder
     private var indicatorTrack: some View {
         Quadrant(.bottomTrailing, isFloating: true) {
             indicators
         }
     }
 
-    @ViewBuilder
     private func landscapeView(showsIndicators: Bool) -> some View {
         VStack(spacing: inset) {
             HStack(spacing: inset) {
@@ -110,7 +105,6 @@ struct ProgressIndicator: View {
         }
     }
 
-    @ViewBuilder
     private func compactView(showsIndicators: Bool) -> some View {
         VStack(alignment: .trailing, spacing: inset) {
             if showsIndicators {

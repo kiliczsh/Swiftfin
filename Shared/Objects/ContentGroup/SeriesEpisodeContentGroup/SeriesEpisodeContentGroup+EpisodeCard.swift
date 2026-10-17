@@ -139,7 +139,7 @@ extension SeriesEpisodeContentGroup {
         private var subHeader: String {
             let number = episode.indexNumber.map { L10n.episodeNumber($0) } ?? episode.episodeLocator ?? .emptyDash
             return [number.localizedUppercase, episode.runTimeLabel]
-                .compactMap { $0 }
+                .compactMap(\.self)
                 .joined(separator: " · ")
         }
 
@@ -262,7 +262,6 @@ extension SeriesEpisodeContentGroup {
             self.artwork = artwork()
         }
 
-        @ViewBuilder
         private func contextMenuPreview(for item: BaseItemDto) -> some View {
             VStack(alignment: .leading) {
                 PosterImage(

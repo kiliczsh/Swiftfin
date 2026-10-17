@@ -168,6 +168,7 @@ private struct HeroCarouselView: View {
 
     private var selectedIndex: Int {
         guard let selection else { return 0 }
+
         return entries.firstIndex { $0.id == selection } ?? 0
     }
 
@@ -303,7 +304,7 @@ private struct HeroPage: View {
             return
         }
 
-        let queue: (any MediaPlayerQueue)? = item.type == .episode ?
+        let queue: any MediaPlayerQueue? = item.type == .episode ?
             EpisodeMediaPlayerQueue(episode: item) : nil
 
         router.route(
@@ -316,7 +317,6 @@ private struct HeroPage: View {
 
     // MARK: Views
 
-    @ViewBuilder
     private var backdrop: some View {
         ImageView(backdropSources)
             .failure {
@@ -363,7 +363,6 @@ private struct HeroPage: View {
             .shadow(color: .black.opacity(0.35), radius: 8, y: 2)
     }
 
-    @ViewBuilder
     private var logo: some View {
         ImageView(logoSource)
             .placeholder { _ in
@@ -394,7 +393,6 @@ private struct HeroPage: View {
         }
     }
 
-    @ViewBuilder
     private var metadata: some View {
         DotHStack {
             if item.type == .episode {
@@ -430,7 +428,6 @@ private struct HeroPage: View {
         return L10n.play
     }
 
-    @ViewBuilder
     private var buttons: some View {
         HStack(spacing: 12) {
             Button(action: play) {
