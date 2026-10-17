@@ -12,6 +12,9 @@ import SwiftUI
 
 extension ItemView {
 
+    /// iPhone hero header: full-bleed key art that runs under the status bar,
+    /// a centered logo (or heavy uppercase title), metadata, outlined badges,
+    /// a white Play/Resume capsule with glass circle actions and the description.
     struct CompactEnhancedHeaderContentGroup: ContentGroup {
 
         let id: String = ItemView.Component.header
@@ -29,7 +32,27 @@ extension ItemView {
             @StoredValue(.User.itemViewAttributes)
             private var attributes
 
-            private let headerAspectRatio = 1.6
+            /// Height of the hero area in content coordinates (below the navigation bar).
+            /// The background is stretched to also cover the bar and status bar.
+            private let heroHeight: CGFloat = 440
+
+            /// How far the art extends above the content's top edge, under the status bar.
+            private static let underStatusBarExtent: CGFloat = 120
+
+            // MARK: - Title
+
+            @ViewBuilder
+            private var fallbackTitle: some View {
+                Text(provider.item.displayTitle.localizedUppercase)
+                    .font(.system(size: 44, weight: .black))
+                    .tracking(-1)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.5)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.white)
+                    .shadow(color: .black.opacity(0.35), radius: 12, y: 2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             @ViewBuilder
             private var logo: some View {
@@ -37,115 +60,123 @@ extension ItemView {
                     provider.item.imageSource(
                         .logo,
                         itemID: provider.item.id,
-                        environment: ImageSourceOptions(maxHeight: 70)
+                        environment: ImageSourceOptions(maxHeight: 200)
                     )
                 )
                 .placeholder { _ in
-                    EmptyView()
+                    Color.clear
+                        .frame(height: 90)
                 }
                 .failure {
-                    Text(provider.item.displayTitle)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .font(.largeTitle)
-                        .fontWeight(.semibold)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(.primary)
+                    fallbackTitle
                 }
                 .aspectRatio(contentMode: .fit)
-                .frame(height: 70, alignment: .bottom)
+                .frame(maxWidth: 300, maxHeight: 100, alignment: .bottom)
+                .shadow(color: .black.opacity(0.3), radius: 10)
                 .accessibilityLabel(provider.item.displayTitle)
+                .accessibilityAddTraits(.isHeader)
                 .accessibilityRemoveTraits(.isImage)
             }
 
+            // MARK: - Hero content
+
             @ViewBuilder
-            private var overlay: some View {
+            private var heroContent: some View {
                 VStack(alignment: .center, spacing: 10) {
-                    AlternateLayoutView(alignment: .bottom) {
-                        Color.clear
-                            .aspectRatio(headerAspectRatio, contentMode: .fit)
-                    } content: {
-                        logo
-                    }
-                    .zIndex(10)
+                    logo
 
-                    VStack(alignment: .center, spacing: 10) {
-                        MetadataHStack(item: provider.item)
+                    MetadataHStack(item: provider.item, font: .subheadline)
+                        .foregroundStyle(.white.opacity(0.75))
 
-                        ItemView.ActionBar(provider: provider)
-                            .frame(maxWidth: 300)
+                    ItemView.AttributesHStack(
+                        attributes: attributes,
+                        item: provider.item,
+                        selectedMediaSource: provider.mediaPlayerItemProvider?.mediaSource,
+                        alignment: .center,
+                        prefersOutlineBadges: true
+                    )
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.white.opacity(0.75))
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: heroHeight, alignment: .bottom)
+            }
 
-                        ItemView.Description(item: provider.item)
+            // MARK: - Background
 
-                        ItemView.AttributesHStack(
-                            attributes: attributes,
-                            item: provider.item,
-                            selectedMediaSource: provider.mediaPlayerItemProvider?.mediaSource,
-                            alignment: .leading
-                        )
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .foregroundStyle(.secondary)
-                    }
-                    .edgePadding(.bottom)
-                    .background(
-                        alignment: .bottom,
-                        extendedBy: .init(
-                            vertical: 25,
-                            horizontal: EdgeInsets.edgePadding
-                        )
-                    ) {
-                        Rectangle()
-                            .fill(Material.ultraThin)
-                            .mask(gradient: .eased(.easeOut)) {
-                                (location: 0, opacity: 0)
-                                (location: 0.2, opacity: 1)
+            @ViewBuilder
+            private var heroBackground: some View {
+                VStack(spacing: 0) {
+                    Color.black
+                        .frame(height: heroHeight + 60 + Self.underStatusBarExtent)
+                        .frame(maxWidth: .infinity)
+                        .overlay {
+                            ImageView(provider.item.imageSource(
+                                .backdrop,
+                                itemID: provider.item.id,
+                                environment: ImageSourceOptions(maxWidth: 1320)
+                            ))
+                            .image { (image: Image) in
+                                image
+                                    .aspectRatio(contentMode: .fill)
                             }
-                    }
-                    .zIndex(9)
+                            .placeholder { _ in
+                                Color.black
+                            }
+                        }
+                        .clipped()
+                        .overlay(alignment: .top) {
+                            LinearGradient(
+                                colors: [.black.opacity(0.55), .black.opacity(0)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                            .frame(height: 140)
+                        }
+                        .overlay(alignment: .bottom) {
+                            // Fade fully to black so the art never ends in a hard edge.
+                            LinearGradient(
+                                stops: [
+                                    .init(color: .black.opacity(0), location: 0),
+                                    .init(color: .black.opacity(0.6), location: 0.5),
+                                    .init(color: .black, location: 1),
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                            .frame(height: 300)
+                        }
+                        // Run the art up under the status bar instead of leaving a black band.
+                        .padding(.top, -Self.underStatusBarExtent)
+
+                    // Actions and description sit on plain black below the art.
+                    Color.black
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
+                .accessibilityHidden(true)
             }
 
-            private func resolveColor(from image: UIImage, binding: Binding<Color>) {
-                Task.detached(priority: .utility) {
-                    guard let color = image.interestingColor() else { return }
-
-                    await MainActor.run {
-                        binding.wrappedValue = color
-                    }
-                }
-            }
+            // MARK: - Body
 
             var body: some View {
-                overlay
-                    .edgePadding(.horizontal)
-                    .frame(maxWidth: .infinity)
-                    .colorScheme(.dark)
-                    .backgroundParallaxHeader(multiplier: 0.3) {
-                        StateAdapter(initialValue: Color.secondarySystemFill) { resolvedColor in
-                            MirrorExtensionView(edges: .top) {
-                                AlternateLayoutView {
-                                    Color.clear
-                                } content: {
-                                    ImageView(provider.item.imageSource(
-                                        .backdrop,
-                                        itemID: provider.item.id,
-                                        environment: ImageSourceOptions(maxWidth: 1320)
-                                    ))
-                                    .image { (image: UIImage) in
-                                        Image(uiImage: image)
-                                            .resizable()
-                                            .aspectRatio(contentMode: .fill)
-                                            .onAppear {
-                                                resolveColor(from: image, binding: resolvedColor)
-                                            }
-                                    }
-                                }
-                                .aspectRatio(headerAspectRatio, contentMode: .fit)
-                                .accessibilityHidden(true)
-                            }
-                            .bottomEdgeGradient(bottomColor: resolvedColor.wrappedValue)
-                        }
-                    }
+                VStack(alignment: .leading, spacing: 20) {
+                    heroContent
+
+                    #if os(iOS)
+                    ItemView.CompactActionBar(provider: provider)
+                    #else
+                    ItemView.ActionBar(provider: provider)
+                    #endif
+
+                    ItemView.Description(item: provider.item, isInline: true)
+                }
+                .edgePadding(.horizontal)
+                .padding(.bottom, 12)
+                .frame(maxWidth: .infinity)
+                .colorScheme(.dark)
+                .backgroundParallaxHeader(multiplier: 0.85) {
+                    heroBackground
+                }
             }
         }
     }

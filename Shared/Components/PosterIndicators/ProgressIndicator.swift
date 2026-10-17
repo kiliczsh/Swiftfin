@@ -40,11 +40,20 @@ struct ProgressIndicator: View {
         progress.isFinite ? clamp(progress, min: 0, max: 1) : 0
     }
 
+    /// iOS landscape cards use a white bar, matching the cinematic home style.
+    private var landscapeBarColor: Color {
+        #if os(iOS)
+        .white
+        #else
+        accentColor
+        #endif
+    }
+
     @ViewBuilder
     private var progressBar: some View {
         ProgressView(value: normalizedProgress)
             .progressViewStyle(.playback)
-            .foregroundStyle(accentColor)
+            .foregroundStyle(landscapeBarColor)
             .frame(height: 6)
             .padding(.horizontal, 5)
             .padding(.bottom, 5)

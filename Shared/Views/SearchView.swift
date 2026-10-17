@@ -30,6 +30,11 @@ struct SearchView: View {
     @StateObject
     private var viewModel = SearchViewModel()
 
+    #if os(iOS)
+    @StateObject
+    private var browseViewModel = SearchBrowseViewModel()
+    #endif
+
     @TabItemSelected
     private var tabItemSelected
 
@@ -86,7 +91,11 @@ struct SearchView: View {
                                 )
                             }
                         } else {
+                            #if os(iOS)
+                            SearchBrowseView(viewModel: browseViewModel)
+                            #else
                             suggestionsView
+                            #endif
                         }
 
                     case .searching:
@@ -102,7 +111,11 @@ struct SearchView: View {
         .animation(.linear(duration: 0.2), value: viewModel.state)
         .ignoresSafeArea(.keyboard)
         .navigationTitle(L10n.search)
-        .toolbarTitleDisplayMode(.inline)
+        #if os(iOS)
+            .toolbarTitleDisplayMode(.large)
+        #else
+            .toolbarTitleDisplayMode(.inline)
+        #endif
         .searchFocused($isSearchFocused)
         .onReceive(tabItemSelected) { event in
             if event.isRepeat, event.isRoot {
@@ -115,10 +128,19 @@ struct SearchView: View {
         .onChange(of: searchQuery) {
             viewModel.search(query: searchQuery)
         }
+        #if os(iOS)
+        // Keep the field visible under the large title.
+        .searchable(
+            text: $searchQuery,
+            placement: .navigationBarDrawer(displayMode: .always),
+            prompt: L10n.search
+        )
+        #else
         .searchable(
             text: $searchQuery,
             prompt: L10n.search
         )
+        #endif
         .environmentObject(focusCoordinator)
         #if os(tvOS)
         .modifier(SearchSafeAreaModifier())

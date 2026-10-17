@@ -58,30 +58,63 @@ extension SelectUserView {
                     }
                 }
             } label: {
-                HStack(spacing: horizontalSizeClass == .compact ? nil : 16) {
-                    switch serverSelection {
-                    case .all:
-                        Label(L10n.allServers, systemImage: "person.2.fill")
-                    case let .server(id):
-                        if let server = servers.first(where: { $0.id == id }) {
-                            Label(server.name, systemImage: "server.rack")
-                        } else {
-                            Label(L10n.unknown, systemImage: "server.rack")
-                        }
-                    }
-
-                    Image(systemName: "chevron.up.chevron.down")
-                        .foregroundStyle(.secondary)
-                        .font(.subheadline)
-                }
-                .fontWeight(.semibold)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                #if os(iOS)
+                iOSLabel
+                #else
+                defaultLabel
+                #endif
             }
             .foregroundStyle(.primary, .secondary)
             .menuOrder(.fixed)
             .symbolRenderingMode(.monochrome)
             .backport
             .glassEffect(in: .capsule)
+        }
+
+        private var selectedServerName: String {
+            switch serverSelection {
+            case .all:
+                L10n.allServers
+            case let .server(id):
+                servers.first(where: { $0.id == id })?.name ?? L10n.unknown
+            }
+        }
+
+        /// tvOS-style capsule label: server name + chevron, no icon.
+        private var iOSLabel: some View {
+            HStack(spacing: 6) {
+                Text(selectedServerName)
+                    .lineLimit(1)
+
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .font(.system(size: 17, weight: .semibold))
+            .padding(.horizontal, 20)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .contentShape(.capsule)
+        }
+
+        private var defaultLabel: some View {
+            HStack(spacing: horizontalSizeClass == .compact ? nil : 16) {
+                switch serverSelection {
+                case .all:
+                    Label(L10n.allServers, systemImage: "person.2.fill")
+                case let .server(id):
+                    if let server = servers.first(where: { $0.id == id }) {
+                        Label(server.name, systemImage: "server.rack")
+                    } else {
+                        Label(L10n.unknown, systemImage: "server.rack")
+                    }
+                }
+
+                Image(systemName: "chevron.up.chevron.down")
+                    .foregroundStyle(.secondary)
+                    .font(.subheadline)
+            }
+            .fontWeight(.semibold)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 }

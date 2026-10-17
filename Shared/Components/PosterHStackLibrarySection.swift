@@ -49,10 +49,16 @@ struct PosterHStackLibrarySection<Library: PagingLibrary>: View
     }
 
     private var headerTitle: some View {
+        #if os(tvOS)
         Text(group.displayTitle)
             .font(.title3)
             .fontWeight(.semibold)
             .lineLimit(1)
+        #else
+        Text(group.displayTitle)
+            .font(.title2.bold())
+            .lineLimit(1)
+        #endif
     }
 
     @ViewBuilder
@@ -80,11 +86,11 @@ struct PosterHStackLibrarySection<Library: PagingLibrary>: View
                 .animation(.easeInOut(duration: 0.15), value: isHeaderFocused)
                 .offset(x: -16)
                 #else
-                HStack(spacing: 3) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
                     headerTitle
 
                     Image(systemName: "chevron.forward")
-                        .font(.title3)
+                        .font(.body.weight(.bold))
                         .foregroundStyle(.secondary)
                 }
                 #endif

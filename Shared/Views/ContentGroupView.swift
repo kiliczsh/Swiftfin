@@ -36,6 +36,10 @@ struct ContentGroupView<Provider: ContentGroupProvider>: View {
     @TabItemSelected
     private var tabItemSelected
 
+    private var hasFullBleedHeader: Bool {
+        viewModel.state == .content && contentGroupOptions.contains(.ignoreSafeAreaTop)
+    }
+
     init(provider: Provider) {
         _viewModel = StateObject(wrappedValue: ContentGroupViewModel(provider: provider))
     }
@@ -116,7 +120,18 @@ struct ContentGroupView<Provider: ContentGroupProvider>: View {
         .animation(.linear(duration: 0.2), value: viewModel.background.states)
         .navigationTitle(viewModel.provider.displayTitle)
         #if os(iOS)
-        .toolbarTitleDisplayMode(router.isRootOfPath ? .inlineLarge : .inline)
+        .toolbarTitleDisplayMode(router.isRootOfPath && !hasFullBleedHeader ? .inlineLarge : .inline)
+        .toolbar {
+            // A full-bleed header (e.g. the Home hero) replaces the title
+            if hasFullBleedHeader {
+                ToolbarItem(placement: .principal) {
+                    Color.clear
+                        .frame(width: 1, height: 1)
+                        .accessibilityHidden(true)
+                }
+            }
+        }
+        .modifier(HideTopScrollEdgeEffectModifier(isHidden: hasFullBleedHeader))
         #elseif os(tvOS)
         .toolbar(router.isRootOfPath ? .hidden : .automatic, for: .navigationBar)
         #endif
@@ -142,3 +157,18 @@ struct ContentGroupView<Provider: ContentGroupProvider>: View {
         .environmentObject(focusCoordinator)
     }
 }
+
+#if os(iOS)
+private struct HideTopScrollEdgeEffectModifier: ViewModifier {
+
+    let isHidden: Bool
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.scrollEdgeEffectHidden(isHidden, for: .top)
+        } else {
+            content
+        }
+    }
+}
+#endif

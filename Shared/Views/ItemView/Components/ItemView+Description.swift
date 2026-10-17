@@ -19,13 +19,63 @@ extension ItemView {
         @SharedBaseItem
         var item: BaseItemDto
 
+        /// Tagline and overview flow as a single paragraph: bold primary tagline
+        /// followed by the secondary overview.
+        var isInline: Bool = false
+
+        private var tagline: String? {
+            item.taglines?.first(where: \.isNotEmpty)
+        }
+
+        private var overview: String? {
+            item.overview.flatMap { $0.isNotEmpty ? $0 : nil }
+        }
+
+        private var inlineText: Text {
+            var text = Text(verbatim: "")
+
+            if let tagline {
+                text = Text(tagline)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.primary)
+            }
+
+            if let overview {
+                let overviewText = Text(overview)
+                    .foregroundStyle(.secondary)
+
+                // Joins two styled texts with a space; nothing here is user-facing copy to localize.
+                // swiftlint:disable:next hard_coded_display_string
+                text = tagline == nil ? overviewText : Text("\(text) \(overviewText)")
+            }
+
+            return text
+        }
+
+        @ViewBuilder
+        private var inlineBody: some View {
+            Button {
+                router.route(to: .itemOverview(item: item))
+            } label: {
+                SeeMoreText(inlineText)
+                    .font(.callout)
+                    .lineLimit(5)
+                    .multilineTextAlignment(.leading)
+            }
+            .buttonStyle(.plain)
+            .disabled(overview == nil)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+
         private var isPresented: Bool {
             item.taglines?.contains(where: \.isNotEmpty) == true ||
                 item.overview?.isNotEmpty == true
         }
 
         var body: some View {
-            if isPresented {
+            if isPresented, isInline {
+                inlineBody
+            } else if isPresented {
                 VStack(alignment: .leading, spacing: 5) {
                     if let firstTagline = item.taglines?.first(where: \.isNotEmpty) {
                         Text(firstTagline)

@@ -36,9 +36,27 @@ final class ItemStore {
         let itemID: String
         var metadataChanged = false
         var userDataChanged = false
+        /// Whether the played state or the started/not-started state changed.
+        /// Playback position moving forward alone does not count.
+        var playbackStateChanged = false
+        /// Incoming user data for items without a loaded record, since there is no previous value to compare.
+        var unloadedUserData: UserItemDataDto?
 
         var hasChanges: Bool {
             metadataChanged || userDataChanged
+        }
+    }
+
+    /// The parts of user data that change what "play next" means: whether an item was played,
+    /// and whether it was started at all. Progress ticks while playing leave this unchanged.
+    struct PlaybackState: Equatable {
+
+        let isPlayed: Bool
+        let isStarted: Bool
+
+        init(_ userData: UserItemDataDto?) {
+            self.isPlayed = userData?.isPlayed ?? false
+            self.isStarted = (userData?.playbackPositionTicks ?? 0) > 0
         }
     }
 
@@ -147,7 +165,7 @@ final class ItemStore {
 
         // Unloaded items can affect a collection without needing a retained record
         guard let record = self[id] else {
-            changeSubject.send(.updated(Update(itemID: id, userDataChanged: true)))
+            changeSubject.send(.updated(Update(itemID: id, userDataChanged: true, unloadedUserData: data)))
             return
         }
 

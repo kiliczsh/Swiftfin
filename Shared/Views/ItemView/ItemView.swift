@@ -87,6 +87,20 @@ struct ItemView: View {
         return [header] + viewModel.groups
     }
 
+    private var resolvedButtons: (visible: [ItemActionButton], overflow: [ItemActionButton], menu: [ItemActionButton]) {
+        let resolved = buttonConfiguration.resolvedButtons(for: provider)
+
+        #if os(iOS)
+        // The compact enhanced header only shows a couple of circle buttons,
+        // the rest move into the navigation bar menu.
+        if isEnhanced, isCompact {
+            return CompactActionBar.split(resolved)
+        }
+        #endif
+
+        return resolved
+    }
+
     @ViewBuilder
     private func contentGroupScrollView(
         isEnhanced: Bool = false
@@ -109,6 +123,10 @@ struct ItemView: View {
             switch (isEnhanced, isCompact) {
             case (true, true):
                 blurredNavigationBarScrollView
+                #if os(iOS)
+                    .background(Color.black.ignoresSafeArea())
+                    .colorScheme(.dark)
+                #endif
 
             case (true, false):
                 InlinePlatformView {
@@ -125,7 +143,7 @@ struct ItemView: View {
     }
 
     var body: some View {
-        let (_, overflow, menu) = buttonConfiguration.resolvedButtons(for: provider)
+        let (_, overflow, menu) = resolvedButtons
 
         ZStack {
             switch viewModel.state {
@@ -171,6 +189,16 @@ struct ItemView: View {
         #if os(tvOS)
         .toolbarVisibility(.hidden, for: .navigationBar)
         #else
+        .toolbarColorScheme(isEnhanced && isCompact ? .dark : nil, for: .navigationBar)
+        .toolbar {
+            // The hero shows the logo; keep the bar title empty like a TV-app detail page.
+            if isEnhanced, isCompact {
+                ToolbarItem(placement: .principal) {
+                    Color.clear
+                        .frame(width: 1, height: 1)
+                }
+            }
+        }
         .navigationBarMenuButton(
             isLoading: viewModel.background.is(.refreshing),
             isHidden: overflow.isEmpty && menu.isEmpty

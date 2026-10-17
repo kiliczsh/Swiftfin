@@ -12,6 +12,13 @@ extension Color {
 
     static let jellyfinPurple = Color(red: 172 / 255, green: 92 / 255, blue: 195 / 255, opacity: 1)
 
+    /// Default accent color. White on iOS to match the dark, TV-app style design.
+    #if os(iOS)
+    static let defaultAccent = Color.white
+    #else
+    static let defaultAccent = jellyfinPurple
+    #endif
+
     var uiColor: UIColor {
         UIColor(self)
     }

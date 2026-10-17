@@ -6,12 +6,16 @@
 // Copyright (c) 2026 Jellyfin & Jellyfin Contributors
 //
 
+import Defaults
 import OrderedCollections
 import SwiftUI
 
 extension SelectUserView {
 
     struct Toolbar: View {
+
+        @Default(.selectUserDisplayType)
+        private var userListDisplayType
 
         @Environment(\.horizontalSizeClass)
         private var horizontalSizeClass
@@ -38,6 +42,16 @@ extension SelectUserView {
 
         private let buttonHeight: CGFloat = UIDevice.isTV ? 75 : 44
 
+        /// On iOS the profile grid carries its own "Add" cell, so the
+        /// separate add button is only needed for the list layout.
+        private var showsAddUserButton: Bool {
+            #if os(iOS)
+            return allUsers.isNotEmpty && userListDisplayType == .list
+            #else
+            return true
+            #endif
+        }
+
         init(
             servers: OrderedSet<ServerState>,
             allUsers: [UserItem],
@@ -63,15 +77,18 @@ extension SelectUserView {
         @ViewBuilder
         private var compactView: some View {
             if !isEditing {
-                HStack(spacing: 16) {
+                HStack(spacing: 10) {
                     ServerMenu(servers: servers)
-                        .frame(height: buttonHeight)
-                        .frame(maxWidth: 400)
+                        .frame(height: 50)
+                        .frame(maxWidth: .infinity)
 
-                    AddUserMenu(servers: servers)
-                        .frame(width: buttonHeight, height: buttonHeight)
+                    if showsAddUserButton {
+                        AddUserMenu(servers: servers)
+                            .frame(width: 50, height: 50)
+                    }
                 }
-                .edgePadding([.bottom, .horizontal])
+                .padding(.horizontal, 20)
+                .padding(.bottom, 8)
             }
         }
 
@@ -148,7 +165,7 @@ extension SelectUserView {
 
             AddUserMenu(servers: servers)
                 .frame(width: buttonHeight, height: buttonHeight)
-                .hidden(allUsers.isEmpty)
+                .hidden(!showsAddUserButton || allUsers.isEmpty)
         }
     }
 }

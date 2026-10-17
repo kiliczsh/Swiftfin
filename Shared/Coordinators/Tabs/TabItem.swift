@@ -108,10 +108,14 @@ extension TabItem {
             title: L10n.media,
             systemImage: "rectangle.stack.fill"
         ) {
+            #if os(iOS)
+            MediaLibraryView()
+            #else
             PagingLibraryView(library: UserViewLibrary())
                 .if(UIDevice.isTV) { view in
                     view.toolbar(.hidden, for: .navigationBar)
                 }
+            #endif
         }
     }
 

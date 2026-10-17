@@ -16,6 +16,8 @@ extension ItemView {
         @SharedBaseItem
         var item: BaseItemDto
 
+        var font: Font = .caption
+
         var body: some View {
             DotHStack {
                 if let firstGenre = item.genres?.first {
@@ -34,7 +36,7 @@ extension ItemView {
                     Text(seasonEpisodeLabel)
                 }
             }
-            .font(.caption)
+            .font(font)
             .fontWeight(.semibold)
             .foregroundStyle(.secondary)
         }

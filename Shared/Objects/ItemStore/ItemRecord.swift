@@ -153,7 +153,8 @@ final class ItemRecord: Identifiable {
         let update = ItemStore.Update(
             itemID: id,
             metadataChanged: previousMetadata != updatedMetadata || previousProgramID != currentProgram?.id,
-            userDataChanged: previous.userData != value.userData
+            userDataChanged: previous.userData != value.userData,
+            playbackStateChanged: ItemStore.PlaybackState(previous.userData) != ItemStore.PlaybackState(value.userData)
         )
 
         if value != metadata {

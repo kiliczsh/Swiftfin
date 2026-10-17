@@ -30,10 +30,20 @@ extension SeriesEpisodeContentGroup {
             }
         }
 
+        private var subHeader: String {
+            #if os(iOS)
+            if let indexNumber = episode.indexNumber {
+                return L10n.episodeNumber(indexNumber)
+            }
+            #endif
+
+            return episode.episodeLocator ?? .emptyDash
+        }
+
         var body: some View {
             EpisodeCardLayout(
                 header: episode.displayTitle,
-                subHeader: episode.episodeLocator ?? .emptyDash,
+                subHeader: subHeader,
                 content: episodeContent,
                 artworkAction: {
                     guard let provider = episode.getPlaybackItemProvider(userSession: nil) else {
@@ -104,6 +114,101 @@ extension SeriesEpisodeContentGroup {
             }
         }
     }
+
+    #if os(iOS)
+    /// A compact, list-style episode row: thumbnail on the leading edge, metadata beside it.
+    struct EpisodeRow: View {
+
+        @Namespace
+        private var namespace
+
+        @Router
+        private var router
+
+        @SharedBaseItem
+        var episode: BaseItemDto
+
+        private var overview: String {
+            if episode.isUnaired {
+                episode.airDateLabel ?? L10n.noOverviewAvailable
+            } else {
+                episode.overview ?? L10n.noOverviewAvailable
+            }
+        }
+
+        private var subHeader: String {
+            let number = episode.indexNumber.map { L10n.episodeNumber($0) } ?? episode.episodeLocator ?? .emptyDash
+            return [number.localizedUppercase, episode.runTimeLabel]
+                .compactMap { $0 }
+                .joined(separator: " · ")
+        }
+
+        var body: some View {
+            HStack(alignment: .top, spacing: 12) {
+                Button {
+                    guard let provider = episode.getPlaybackItemProvider(userSession: nil) else { return }
+
+                    router.route(
+                        to: .videoPlayer(
+                            provider: provider,
+                            queue: EpisodeMediaPlayerQueue(episode: episode)
+                        )
+                    )
+                } label: {
+                    PosterImage(
+                        item: episode,
+                        type: .landscape,
+                        size: .small
+                    )
+                    .overlay(alignment: .bottom) {
+                        PosterIndicatorsOverlay(
+                            item: episode,
+                            posterDisplayType: .landscape
+                        )
+                    }
+                    .aspectRatio(16 / 9, contentMode: .fill)
+                    .frame(width: 140)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .matchedTransitionSource(id: "item", in: namespace)
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint(L10n.posterAccessibilityPlayHint)
+
+                Button {
+                    router.route(to: .item(item: episode), in: namespace)
+                } label: {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(subHeader)
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+
+                        Text(episode.displayTitle)
+                            .font(.subheadline)
+                            .fontWeight(.bold)
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+
+                        Text(overview)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(2)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.vertical, 10)
+            .edgePadding(.horizontal)
+            .contextMenu {
+                episode.posterContextMenu
+            }
+        }
+    }
+    #endif
 
     private struct EpisodeCardLayout<Artwork: View>: View {
 
@@ -252,6 +357,29 @@ extension SeriesEpisodeContentGroup {
         let content: String
 
         var body: some View {
+            #if os(iOS)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(subHeader.localizedUppercase)
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+
+                Text(header)
+                    .font(.subheadline)
+                    .fontWeight(.bold)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+
+                Text(content)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(2, reservesSpace: true)
+            }
+            .padding(.top, 4)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            #else
             VStack(alignment: .leading, spacing: 4) {
                 Text(subHeader)
                     .font(.caption)
@@ -270,6 +398,7 @@ extension SeriesEpisodeContentGroup {
                     .lineLimit(3, reservesSpace: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            #endif
         }
     }
 

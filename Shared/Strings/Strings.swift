@@ -264,6 +264,8 @@ internal enum L10n {
   internal static let boxRearImageDescription = L10n.tr("Localizable", "boxRearImageDescription", fallback: "Rear box art representing the back of the item\'s physical packaging, often showing descriptions or track listings.")
   /// Brightness
   internal static let brightness = L10n.tr("Localizable", "brightness", fallback: "Brightness")
+  /// Browse
+  internal static let browse = L10n.tr("Localizable", "browse", fallback: "Browse")
   /// Bugs and features
   internal static let bugsAndFeatures = L10n.tr("Localizable", "bugsAndFeatures", fallback: "Bugs and features")
   /// Buttons
@@ -852,6 +854,8 @@ internal enum L10n {
   internal static let indicators = L10n.tr("Localizable", "indicators", fallback: "Indicators")
   /// Info
   internal static let info = L10n.tr("Localizable", "info", fallback: "Info")
+  /// Information
+  internal static let information = L10n.tr("Localizable", "information", fallback: "Information")
   /// Inker
   internal static let inker = L10n.tr("Localizable", "inker", fallback: "Inker")
   /// In progress
@@ -1824,6 +1828,10 @@ internal enum L10n {
   internal static let timeBase = L10n.tr("Localizable", "timeBase", fallback: "Time Base")
   /// Time left
   internal static let timeLeft = L10n.tr("Localizable", "timeLeft", fallback: "Time left")
+  /// %@ left
+  internal static func timeLeftFormat(_ p1: Any) -> String {
+    return L10n.tr("Localizable", "timeLeftFormat", String(describing: p1), fallback: "%@ left")
+  }
   /// Time limit
   internal static let timeLimit = L10n.tr("Localizable", "timeLimit", fallback: "Time limit")
   /// Time limit: %1$@
@@ -1918,6 +1926,8 @@ internal enum L10n {
   internal static let uploadFile = L10n.tr("Localizable", "uploadFile", fallback: "Upload file")
   /// Upload photo
   internal static let uploadPhoto = L10n.tr("Localizable", "uploadPhoto", fallback: "Upload photo")
+  /// Up Next
+  internal static let upNext = L10n.tr("Localizable", "upNext", fallback: "Up Next")
   /// URL
   internal static let url = L10n.tr("Localizable", "url", fallback: "URL")
   /// Use
@@ -2004,6 +2014,8 @@ internal enum L10n {
   internal static let weekend = L10n.tr("Localizable", "weekend", fallback: "Weekend")
   /// Weekly
   internal static let weekly = L10n.tr("Localizable", "weekly", fallback: "Weekly")
+  /// Who's Watching?
+  internal static let whosWatching = L10n.tr("Localizable", "whosWatching", fallback: "Who\'s Watching?")
   /// Wi-Fi
   internal static let wifi = L10n.tr("Localizable", "wifi", fallback: "Wi-Fi")
   /// Wi-Fi Name

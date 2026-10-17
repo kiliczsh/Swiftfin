@@ -171,6 +171,31 @@ struct SelectUserView: View {
     private var contentView: some View {
         VStack(spacing: 0) {
             ZStack {
+                #if os(iOS)
+                if userItems.isEmpty || userListDisplayType == .grid {
+                    // "Who's Watching?" profile picker. Includes its own "Add" cell,
+                    // which also covers the empty state.
+                    GridView(
+                        userItems: userItems,
+                        isEditing: $isEditing,
+                        selectedUsers: $selectedUsers,
+                        serverSelection: serverSelection,
+                        servers: viewModel.servers.keys,
+                        action: { select(user: $0) },
+                        onDelete: { delete(user: $0) }
+                    )
+                    .transition(.opacity)
+                } else {
+                    ListView(
+                        userItems: userItems,
+                        isEditing: $isEditing,
+                        selectedUsers: $selectedUsers,
+                        serverSelection: serverSelection,
+                        action: { select(user: $0) },
+                        onDelete: { delete(user: $0) }
+                    )
+                }
+                #else
                 if userItems.isEmpty {
                     EmptyUserView {
                         if let selectedServer {
@@ -214,6 +239,7 @@ struct SelectUserView: View {
                         )
                     }
                 }
+                #endif
             }
             .animation(.linear(duration: 0.1), value: userListDisplayType)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -283,12 +309,14 @@ struct SelectUserView: View {
             viewModel.getServers()
         }
         .toolbar {
+            #if os(tvOS)
             ToolbarItem(placement: .principal) {
                 Image(.jellyfinBlobBlue)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .frame(width: UIDevice.isTV ? 100 : 30)
+                    .frame(width: 100)
             }
+            #endif
 
             #if os(iOS)
             if horizontalSizeClass == .compact {
@@ -358,10 +386,21 @@ struct SelectUserView: View {
             #endif
         }
         .background {
+            #if os(iOS)
+            ZStack {
+                Color.black
+
+                splashScreenBackground
+            }
+            .ignoresSafeArea()
+            #else
             splashScreenBackground
                 .ignoresSafeArea()
+            #endif
         }
         #if os(iOS)
+        .environment(\.colorScheme, .dark)
+        .toolbarColorScheme(.dark, for: .navigationBar, .bottomBar)
         .ignoresSafeArea(.keyboard, edges: .bottom)
         #endif
         .onChange(of: isEditing) {

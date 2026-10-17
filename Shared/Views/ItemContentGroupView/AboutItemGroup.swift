@@ -186,6 +186,15 @@ struct AboutItemGroup: ContentGroup {
         private let cardAspectRatio: CGFloat = 1.77
 
         var body: some View {
+            #if os(iOS)
+            InformationGrid(item: item)
+            #else
+            cardsBody
+            #endif
+        }
+
+        @ViewBuilder
+        private var cardsBody: some View {
             ContentGroupSection {
                 ScrollView(.horizontal) {
                     HStack(spacing: EdgeInsets.itemSpacing) {
@@ -225,3 +234,170 @@ struct AboutItemGroup: ContentGroup {
         }
     }
 }
+
+#if os(iOS)
+
+// MARK: - Information grid
+
+extension AboutItemGroup {
+
+    /// Two-column label/value grid describing the item: release, runtime,
+    /// rating, genre, media streams and versions.
+    struct InformationGrid: View {
+
+        private struct Entry: Identifiable {
+
+            let id: String
+            let title: String
+            let value: String
+            var action: (() -> Void)?
+        }
+
+        @Router
+        private var router
+
+        @SharedBaseItem
+        var item: BaseItemDto
+
+        private var mediaSource: MediaSourceInfo? {
+            item.mediaSources?.first
+        }
+
+        private func streams(_ type: MediaStreamType) -> [MediaStream] {
+            (mediaSource?.mediaStreams ?? item.mediaStreams ?? [])
+                .filter { $0.type == type }
+        }
+
+        private func joined(_ values: [String], limit: Int = 3) -> String? {
+            var unique: [String] = []
+            for value in values where value.isNotEmpty && !unique.contains(value) {
+                unique.append(value)
+            }
+
+            guard unique.isNotEmpty else { return nil }
+
+            let shown = unique.prefix(limit).joined(separator: " · ")
+            return unique.count > limit ? "\(shown) +\(unique.count - limit)" : shown
+        }
+
+        private var released: String? {
+            if item.type == .series {
+                guard let start = item.productionYear ?? item.premiereDate.map({ Calendar.current.component(.year, from: $0) })
+                else { return nil }
+
+                if let end = item.endDate.map({ Calendar.current.component(.year, from: $0) }), end != start {
+                    return "\(start)–\(end)"
+                }
+
+                return String(start)
+            }
+
+            return item.premiereDate?.formatted(date: .abbreviated, time: .omitted)
+                ?? item.productionYear.map(String.init)
+        }
+
+        private var ratings: String? {
+            var parts: [String] = []
+
+            if let communityRating = item.communityRating {
+                parts.append("★ \(communityRating.formatted(.number.precision(.fractionLength(1))))")
+            }
+
+            if let criticRating = item.criticRating {
+                parts.append("\(Int(criticRating))%")
+            }
+
+            return parts.isEmpty ? nil : parts.joined(separator: " · ")
+        }
+
+        private var entries: [Entry] {
+            var entries: [Entry] = []
+
+            func add(_ id: String, _ title: String, _ value: String?, action: (() -> Void)? = nil) {
+                guard let value, value.isNotEmpty else { return }
+                entries.append(Entry(id: id, title: title, value: value, action: action))
+            }
+
+            let sourceAction: (() -> Void)? = mediaSource.map { source in
+                { router.route(to: .mediaSourceInfo(source: source)) }
+            }
+
+            add("released", L10n.releaseDate, released)
+            add("runtime", L10n.runtime, item.runtime?.formatted(.hourMinuteAbbreviated))
+            add("rated", L10n.parentalRating, item.officialRating)
+            add("ratings", L10n.ratings, ratings)
+            // Genres and studios are shown as tappable pills below this section.
+            add(
+                "director",
+                L10n.director,
+                joined(item.people?.filter { $0.type == .director }.compactMap(\.name) ?? [], limit: 2)
+            )
+            add("video", L10n.video, joined(streams(.video).compactMap(\.displayTitle), limit: 1), action: sourceAction)
+            add("audio", L10n.audio, joined(streams(.audio).compactMap { $0.language ?? $0.displayTitle }), action: sourceAction)
+            add("subtitles", L10n.subtitles, joined(streams(.subtitle).compactMap { $0.language ?? $0.displayTitle }, limit: 4))
+
+            if let mediaSources = item.mediaSources, mediaSources.count > 1 {
+                add("versions", L10n.version, joined(mediaSources.compactMap(\.displayTitle), limit: 2))
+            }
+
+            return entries
+        }
+
+        @ViewBuilder
+        private func cell(_ entry: Entry) -> some View {
+            let content = VStack(alignment: .leading, spacing: 2) {
+                Text(entry.title)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.primary)
+
+                Text(entry.value)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
+                    .multilineTextAlignment(.leading)
+            }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .accessibilityElement(children: .combine)
+
+            if let action = entry.action {
+                Button(action: action) {
+                    content
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+            } else {
+                content
+            }
+        }
+
+        var body: some View {
+            let items = entries
+
+            if items.isNotEmpty {
+                ContentGroupSection {
+                    LazyVGrid(
+                        columns: [
+                            GridItem(.flexible(), spacing: 16, alignment: .topLeading),
+                            GridItem(.flexible(), spacing: 16, alignment: .topLeading),
+                        ],
+                        alignment: .leading,
+                        spacing: 16
+                    ) {
+                        ForEach(items) { entry in
+                            cell(entry)
+                        }
+                    }
+                    .edgePadding(.horizontal)
+                } header: {
+                    DetailSectionHeader(L10n.information)
+                }
+                .padding(.top, 8)
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel(L10n.information)
+            }
+        }
+    }
+}
+
+#endif

@@ -38,25 +38,84 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
         }
 
         return store.changes
-            .compactMap { [weak self, weak store] change -> Void? in
-                guard let self, case let .updated(update) = change else { return nil }
-
-                if update.itemID == self.id, update.metadataChanged {
-                    return ()
-                }
-                // Series and season playback selection depends on their children's progress
-                guard self.item.type == .series || self.item.type == .season,
-                      update.userDataChanged else { return nil }
-
-                let changedItem = store?[update.itemID]?.value
-                if update.itemID == self.id || changedItem?.seriesID == self.id || changedItem?.seasonID == self.id ||
-                    changedItem?.type == nil
-                {
-                    return ()
-                }
-                return nil
+            .compactMap { change -> ItemStore.Update? in
+                guard case let .updated(update) = change else { return nil }
+                return update
+            }
+            .flatMap { [weak self, weak store] update -> AnyPublisher<Void, Never> in
+                guard let self else { return Combine.Empty().eraseToAnyPublisher() }
+                return self.refreshRequest(for: update, in: store)
             }
             .eraseToAnyPublisher()
+    }
+
+    /// Unloaded items seen through user data changes, and whether they belong to this item.
+    private var unloadedChildren: [String: UnloadedChild] = [:]
+
+    private struct UnloadedChild {
+
+        var isChild: Bool?
+        var state: ItemStore.PlaybackState
+    }
+
+    private func refreshRequest(for update: ItemStore.Update, in store: ItemStore?) -> AnyPublisher<Void, Never> {
+        let refresh = Just(()).eraseToAnyPublisher()
+        let none = Combine.Empty<Void, Never>().eraseToAnyPublisher()
+
+        if update.itemID == id, update.metadataChanged {
+            return refresh
+        }
+
+        // Series and season playback selection depends on their children's played state.
+        // Progress ticks while something plays don't change that selection, so they are ignored;
+        // otherwise any playback on any device would rebuild this page every few seconds.
+        guard item.type == .series || item.type == .season, update.userDataChanged else { return none }
+
+        if update.itemID == id {
+            return update.playbackStateChanged ? refresh : none
+        }
+
+        if let changedItem = store?[update.itemID]?.value, changedItem.type != nil {
+            let isChild = changedItem.seriesID == id || changedItem.seasonID == id
+            return isChild && update.playbackStateChanged ? refresh : none
+        }
+
+        // An unloaded item could be an episode from a season that isn't loaded yet.
+        // Ask the server once which series it belongs to and remember the answer.
+        let state = ItemStore.PlaybackState(update.unloadedUserData)
+
+        if var known = unloadedChildren[update.itemID] {
+            let stateChanged = known.state != state
+            known.state = state
+            unloadedChildren[update.itemID] = known
+            return known.isChild == true && stateChanged ? refresh : none
+        }
+
+        unloadedChildren[update.itemID] = UnloadedChild(isChild: nil, state: state)
+
+        return resolveIsChild(itemID: update.itemID)
+            .filter { $0 }
+            .map { _ in () }
+            .eraseToAnyPublisher()
+    }
+
+    private func resolveIsChild(itemID: String) -> AnyPublisher<Bool, Never> {
+        Future { [weak self] promise in
+            Task { @MainActor [weak self] in
+                guard let self, let userSession = self.userSession else {
+                    promise(.success(false))
+                    return
+                }
+
+                let request = Paths.getItem(itemID: itemID, userID: userSession.user.id)
+                let changedItem = try? await userSession.client.send(request).value
+                let isChild = changedItem?.seriesID == self.id || changedItem?.seasonID == self.id
+
+                self.unloadedChildren[itemID]?.isChild = isChild
+                promise(.success(isChild))
+            }
+        }
+        .eraseToAnyPublisher()
     }
 
     init(item: BaseItemDto) {
@@ -130,6 +189,131 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
             []
         }
 
+        #if !os(iOS)
+        pillGroups(for: item)
+        #endif
+
+        switch item.type {
+        case .movie:
+            if item.partCount ?? 0 > 1 {
+                PosterGroup(
+                    id: "additional-parts",
+                    library: AdditionalPartsLibrary(itemID: itemID),
+                    posterDisplayType: .landscape,
+                    posterSize: .small
+                )
+            }
+
+        case .boxSet, .person, .musicArtist:
+            try await ItemTypeContentGroupProvider(
+                itemTypes: BaseItemKind.supportedCases
+                    .appending(.episode)
+                    .appending(.person),
+                parent: item
+            )
+            .makeGroups(environment: .default)
+
+        case .series:
+            // On iOS the episode section's season pills already switch seasons,
+            // so the separate seasons poster row is redundant.
+            #if !os(iOS)
+            try await ItemTypeContentGroupProvider(
+                itemTypes: [.season],
+                parent: item
+            )
+            .makeGroups(environment: .default)
+            #else
+            []
+            #endif
+
+        case .channel, .liveTvChannel, .tvChannel:
+            PosterGroup(
+                id: "channel-programs",
+                library: ChannelScheduleLibrary(channel: item),
+                posterDisplayType: .landscape,
+                posterSize: .small
+            )
+
+        default: []
+        }
+
+        if item.type == .episode {
+            PosterGroup(
+                library: StaticMediaLibrary(
+                    title: L10n.season,
+                    id: "seasons",
+                    elements: [BaseItemDto(
+                        id: item.seasonID,
+                        imageTags: item.parentPrimaryImageItemID == item.seasonID
+                            ? item.parentPrimaryImageTag.map { [ImageType.primary.rawValue: $0] }
+                            : nil,
+                        name: item.seasonName,
+                        parentBackdropImageTags: item.parentBackdropImageTags,
+                        parentBackdropItemID: item.parentBackdropItemID,
+                        parentThumbImageTag: item.parentThumbImageTag,
+                        parentThumbItemID: item.parentThumbItemID,
+                        seriesID: item.seriesID,
+                        seriesName: item.seriesName,
+                        seriesPrimaryImageTag: item.seriesPrimaryImageTag,
+                        seriesThumbImageTag: item.seriesThumbImageTag,
+                        type: .season
+                    )]
+                ),
+                posterSize: .small,
+                environment: .init(isHeaderButtonEnabled: false)
+            )
+        }
+
+        PosterGroup(
+            id: "special-features",
+            library: SpecialFeaturesLibrary(itemID: itemID),
+            posterDisplayType: .landscape,
+            posterSize: .small
+        )
+
+        if let castAndCrew = item.mergedPeople, castAndCrew.isNotEmpty {
+            #if os(iOS)
+            CastAndCrewGroup(
+                displayTitle: L10n.castAndCrew.localizedCapitalized,
+                id: "cast-and-crew",
+                people: castAndCrew
+            )
+            #else
+            PosterGroup(
+                id: "cast-and-crew",
+                library: StaticLibrary(
+                    title: L10n.castAndCrew.localizedCapitalized,
+                    id: "cast-and-crew",
+                    elements: castAndCrew
+                ),
+                posterDisplayType: .portrait,
+                posterSize: .small
+            )
+            #endif
+        }
+
+        if Defaults[.Customization.shouldShowRecommendations] {
+            PosterGroup(
+                id: "similar-items",
+                library: SimilarItemsLibrary(itemID: itemID, itemType: item.type),
+                posterDisplayType: UIDevice.isPhone ? .portrait : .landscape,
+                posterSize: .small
+            )
+        }
+
+        AboutItemGroup(
+            displayTitle: L10n.about,
+            id: "about",
+            item: item
+        )
+
+        #if os(iOS)
+        pillGroups(for: item)
+        #endif
+    }
+
+    @ContentGroupBuilder
+    private func pillGroups(for item: BaseItemDto) -> [any ContentGroup] {
         if let genres = item.itemGenres, genres.isNotEmpty {
             PillGroup(
                 displayTitle: L10n.genres,
@@ -184,106 +368,6 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
                 )
             }
         }
-
-        switch item.type {
-        case .movie:
-            if item.partCount ?? 0 > 1 {
-                PosterGroup(
-                    id: "additional-parts",
-                    library: AdditionalPartsLibrary(itemID: itemID),
-                    posterDisplayType: .landscape,
-                    posterSize: .small
-                )
-            }
-
-        case .boxSet, .person, .musicArtist:
-            try await ItemTypeContentGroupProvider(
-                itemTypes: BaseItemKind.supportedCases
-                    .appending(.episode)
-                    .appending(.person),
-                parent: item
-            )
-            .makeGroups(environment: .default)
-
-        case .series:
-            try await ItemTypeContentGroupProvider(
-                itemTypes: [.season],
-                parent: item
-            )
-            .makeGroups(environment: .default)
-
-        case .channel, .liveTvChannel, .tvChannel:
-            PosterGroup(
-                id: "channel-programs",
-                library: ChannelScheduleLibrary(channel: item),
-                posterDisplayType: .landscape,
-                posterSize: .small
-            )
-
-        default: []
-        }
-
-        if item.type == .episode {
-            PosterGroup(
-                library: StaticMediaLibrary(
-                    title: L10n.season,
-                    id: "seasons",
-                    elements: [BaseItemDto(
-                        id: item.seasonID,
-                        imageTags: item.parentPrimaryImageItemID == item.seasonID
-                            ? item.parentPrimaryImageTag.map { [ImageType.primary.rawValue: $0] }
-                            : nil,
-                        name: item.seasonName,
-                        parentBackdropImageTags: item.parentBackdropImageTags,
-                        parentBackdropItemID: item.parentBackdropItemID,
-                        parentThumbImageTag: item.parentThumbImageTag,
-                        parentThumbItemID: item.parentThumbItemID,
-                        seriesID: item.seriesID,
-                        seriesName: item.seriesName,
-                        seriesPrimaryImageTag: item.seriesPrimaryImageTag,
-                        seriesThumbImageTag: item.seriesThumbImageTag,
-                        type: .season
-                    )]
-                ),
-                posterSize: .small,
-                environment: .init(isHeaderButtonEnabled: false)
-            )
-        }
-
-        if let castAndCrew = item.mergedPeople, castAndCrew.isNotEmpty {
-            PosterGroup(
-                id: "cast-and-crew",
-                library: StaticLibrary(
-                    title: L10n.castAndCrew.localizedCapitalized,
-                    id: "cast-and-crew",
-                    elements: castAndCrew
-                ),
-                posterDisplayType: .portrait,
-                posterSize: .small
-            )
-        }
-
-        PosterGroup(
-            id: "special-features",
-            library: SpecialFeaturesLibrary(itemID: itemID),
-            posterDisplayType: .landscape,
-            posterSize: .small
-        )
-
-        if Defaults[.Customization.shouldShowRecommendations] {
-            PosterGroup(
-                id: "similar-items",
-                library: SimilarItemsLibrary(itemID: itemID, itemType: item.type),
-                posterDisplayType: .landscape,
-                posterSize: .small
-            )
-        }
-
-        AboutItemGroup(
-            displayTitle: L10n.about,
-            id: "about",
-            item: item
-        )
     }
 
     @Published

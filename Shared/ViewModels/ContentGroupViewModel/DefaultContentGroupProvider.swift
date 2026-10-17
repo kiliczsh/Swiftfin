@@ -53,17 +53,26 @@ struct DefaultContentGroupProvider: ContentGroupProvider {
 
         cinematicSelectionContentGroup
         #else
-        PosterGroup(
-            library: ResumeItemsLibrary(mediaTypes: [.video]),
-            posterDisplayType: .landscape,
-            posterSize: .medium,
-            _viewContext: .isInResume
+        let heroContentGroup = HeroContentGroup(
+            resumeLibrary: ResumeItemsLibrary(mediaTypes: [.video]),
+            recentlyAddedLibrary: RecentlyAddedLibrary()
         )
+
+        heroContentGroup
         #endif
 
+        #if os(tvOS)
         PosterGroup(
             library: NextUpLibrary()
         )
+        #else
+        PosterGroup(
+            library: NextUpLibrary(),
+            displayTitle: L10n.upNext,
+            posterDisplayType: .landscape,
+            posterSize: .medium
+        )
+        #endif
 
         if Defaults[.Customization.Home.showRecentlyAdded] {
             #if os(tvOS)
@@ -71,15 +80,18 @@ struct DefaultContentGroupProvider: ContentGroupProvider {
                 viewModel: cinematicSelectionContentGroup.viewModel
             )
             #else
-            PosterGroup(
-                library: ItemLibrary(
-                    parent: BaseItemDto(name: L10n.recentlyAdded.localizedCapitalized),
-                    filters: .init(
-                        itemTypes: [.movie, .series],
-                        sortBy: [.dateCreated],
-                        sortOrder: [.descending]
+            HeroDependentContentGroup(
+                base: PosterGroup(
+                    library: ItemLibrary(
+                        parent: BaseItemDto(name: L10n.recentlyAdded.localizedCapitalized),
+                        filters: .init(
+                            itemTypes: [.movie, .series],
+                            sortBy: [.dateCreated],
+                            sortOrder: [.descending]
+                        )
                     )
-                )
+                ),
+                hero: heroContentGroup.viewModel
             )
             #endif
         }

@@ -88,21 +88,79 @@ extension SeriesEpisodeContentGroup {
             if seasons.count <= 1 {
                 title(selectedSeason?.library.parent.displayTitle ?? L10n.episodes)
             } else {
-                Menu(
-                    selectedSeason?.library.parent.displayTitle ?? L10n.episodes,
-                    systemImage: "chevron.down"
-                ) {
-                    Picker(L10n.seasons, selection: $selection) {
-                        ForEach(seasons) { season in
-                            Text(season.library.parent.displayTitle)
-                                .tag(season.id)
+                ScrollViewReader { proxy in
+                    ScrollView(.horizontal) {
+                        HStack(spacing: 10) {
+                            ForEach(seasons) { season in
+                                SeasonPill(
+                                    title: season.library.parent.displayTitle,
+                                    isSelected: season.id == selection
+                                ) {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        selection = season.id
+                                    }
+                                }
+                                .id(season.id)
+                            }
+                        }
+                        .edgePadding(.horizontal)
+                    }
+                    .scrollIndicators(.hidden)
+                    .scrollClipDisabled()
+                    .onAppear {
+                        if let selection {
+                            proxy.scrollTo(selection, anchor: .center)
                         }
                     }
                 }
-                .labelStyle(.trailingIcon)
-                .buttonStyle(.capsule)
-                .edgePadding(.horizontal)
+                .accessibilityLabel(L10n.seasons)
             }
+        }
+    }
+}
+
+extension SeriesEpisodeContentGroup {
+
+    /// Season capsule: inverted (white/black in dark mode) when selected, grey (#1C1C1E in dark mode) otherwise.
+    struct SeasonPill: View {
+
+        let title: String
+        let isSelected: Bool
+        let action: () -> Void
+
+        private var unselectedColor: Color {
+            #if os(iOS)
+            Color(uiColor: .secondarySystemBackground)
+            #else
+            Color.secondary.opacity(0.3)
+            #endif
+        }
+
+        private var selectedForegroundColor: Color {
+            #if os(iOS)
+            Color(uiColor: .systemBackground)
+            #else
+            Color.black
+            #endif
+        }
+
+        var body: some View {
+            Button(action: action) {
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .lineLimit(1)
+                    .foregroundStyle(isSelected ? selectedForegroundColor : Color.primary)
+                    .padding(.horizontal, 16)
+                    .frame(height: 36)
+                    .background(
+                        isSelected ? Color.primary : unselectedColor,
+                        in: .capsule
+                    )
+                    .contentShape(.capsule)
+            }
+            .buttonStyle(.plain)
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
         }
     }
 }

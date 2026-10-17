@@ -104,18 +104,87 @@ extension SeriesEpisodeContentGroup {
             return elements.first?.id
         }
 
-        var body: some View {
+        #if os(iOS)
+        @AppStorage("seriesEpisodeListLayout")
+        private var isListLayout = false
+
+        private var layoutToggle: some View {
+            Button {
+                withAnimation(.snappy) {
+                    isListLayout.toggle()
+                }
+            } label: {
+                Image(systemName: isListLayout ? "rectangle.split.2x1" : "list.bullet")
+                    .font(.body.weight(.semibold))
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .accessibilityLabel(isListLayout ? L10n.grid : L10n.list)
+            .padding(.trailing, EdgeInsets.edgePadding - 10)
+        }
+
+        private var headerWithToggle: some View {
+            HStack(spacing: 0) {
+                header
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                layoutToggle
+            }
+        }
+
+        private var listBody: some View {
+            ContentGroupSection {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(elements) { element in
+                        if case let .episode(episode) = element {
+                            EpisodeRow(episode: episode.snapshot)
+                        } else {
+                            EpisodeElementCard(element: element) {
+                                seasonViewModel.refresh()
+                            }
+                            .frame(width: 270)
+                            .edgePadding(.horizontal)
+                        }
+                    }
+                }
+            } header: {
+                headerWithToggle
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(L10n.seasons)
+        }
+        #endif
+
+        private var gridBody: some View {
             EpisodeCollectionLayout(
                 elements: elements,
                 preferredElementID: preferredElementID
             ) {
+                #if os(iOS)
+                headerWithToggle
+                #else
                 header
+                #endif
             } content: { element in
                 EpisodeElementCard(element: element) {
                     seasonViewModel.refresh()
                 }
             }
             .scrollDisabled(seasonViewModel.state != .content)
+        }
+
+        var body: some View {
+            #if os(iOS)
+            if isListLayout {
+                listBody
+            } else {
+                gridBody
+            }
+            #else
+            gridBody
+            #endif
         }
     }
 
@@ -164,7 +233,7 @@ extension SeriesEpisodeContentGroup {
                 )
             } else {
                 .grid(
-                    columns: 1.5,
+                    columns: 1.35,
                     rows: 1,
                     columnTrailingInset: 0
                 )

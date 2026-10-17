@@ -39,25 +39,31 @@ extension ItemView {
             .scrollIndicators(.hidden)
             .backport
             .scrollEdgeEffectStyle(.soft, for: .top)
-            .overlay(alignment: .top) {
-                Rectangle()
-                    .fill(Material.ultraThin)
-                    .mask(gradient: .eased(.smootherstep)) {
-                        (location: 0, opacity: 1)
-                        (location: 1, opacity: 0)
-                    }
-                    .frame(
-                        height: frameForParentView[.scrollView, default: .zero]
-                            .safeAreaInsets.top + 20
-                    )
-                    .offset(
-                        y: -frameForParentView[.scrollView, default: .zero]
-                            .safeAreaInsets.top
-                    )
-                    .colorScheme(.dark)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
+            .if(!UIDevice.isPhone) { view in
+                view.overlay(alignment: .top) {
+                    topBlur
+                }
             }
+        }
+
+        private var topBlur: some View {
+            Rectangle()
+                .fill(Material.ultraThin)
+                .mask(gradient: .eased(.smootherstep)) {
+                    (location: 0, opacity: 1)
+                    (location: 1, opacity: 0)
+                }
+                .frame(
+                    height: frameForParentView[.scrollView, default: .zero]
+                        .safeAreaInsets.top + 20
+                )
+                .offset(
+                    y: -frameForParentView[.scrollView, default: .zero]
+                        .safeAreaInsets.top
+                )
+                .colorScheme(.dark)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
         }
     }
 }

@@ -20,6 +20,19 @@ extension ItemView {
 
         var alignment: HorizontalAlignment = .center
         var flowDirection: FlowLayout.Direction = .up
+        /// Render every badge as an outline badge (used by the compact enhanced header)
+        var prefersOutlineBadges: Bool = false
+
+        @ViewBuilder
+        private func fillBadge(_ text: String) -> some View {
+            if prefersOutlineBadges {
+                EmptyLabel(text)
+                    .labelStyle(.attributeBadgeOutline)
+            } else {
+                EmptyLabel(text)
+                    .labelStyle(.attributeBadgeFill)
+            }
+        }
 
         var body: some View {
             if attributes.isNotEmpty {
@@ -86,19 +99,15 @@ extension ItemView {
         private func VideoQuality() -> some View {
             if let mediaStreams = selectedMediaSource?.mediaStreams {
                 if mediaStreams.has4KVideo {
-                    EmptyLabel("4K")
-                        .labelStyle(.attributeBadgeFill)
+                    fillBadge("4K")
                 } else if mediaStreams.hasHDVideo {
-                    EmptyLabel("HD")
-                        .labelStyle(.attributeBadgeFill)
+                    fillBadge("HD")
                 }
                 if mediaStreams.hasDolbyVision {
-                    EmptyLabel("DV")
-                        .labelStyle(.attributeBadgeFill)
+                    fillBadge("DV")
                 }
                 if mediaStreams.hasHDRVideo {
-                    EmptyLabel("HDR")
-                        .labelStyle(.attributeBadgeFill)
+                    fillBadge("HDR")
                 }
             }
         }
@@ -107,12 +116,10 @@ extension ItemView {
         private func AudioChannels() -> some View {
             if let mediaStreams = selectedMediaSource?.mediaStreams {
                 if mediaStreams.has51AudioChannelLayout {
-                    EmptyLabel("5.1")
-                        .labelStyle(.attributeBadgeFill)
+                    fillBadge("5.1")
                 }
                 if mediaStreams.has71AudioChannelLayout {
-                    EmptyLabel("7.1")
-                        .labelStyle(.attributeBadgeFill)
+                    fillBadge("7.1")
                 }
             }
         }
